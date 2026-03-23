@@ -2,6 +2,7 @@ from sqlalchemy import (
     Column,
     Integer,
     String,
+    Text,
     Float,
     Boolean,
     DateTime,
@@ -995,3 +996,37 @@ class PaperTradingTrade(Base):
     opened_at = Column(DateTime, nullable=True)
     closed_at = Column(DateTime, server_default=func.now())
     meta = Column(JSON, default={})
+
+
+class ChatConversation(Base):
+    """AI 对话会话"""
+
+    __tablename__ = "chat_conversations"
+    __table_args__ = (
+        Index("ix_chat_conv_updated", "updated_at"),
+        Index("ix_chat_conv_stock", "stock_symbol", "stock_market"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String, default="")
+    stock_symbol = Column(String, nullable=True)
+    stock_market = Column(String, nullable=True)
+    ai_model_id = Column(Integer, nullable=True)
+    initial_context = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class ChatMessage(Base):
+    """AI 对话消息"""
+
+    __tablename__ = "chat_messages"
+    __table_args__ = (
+        Index("ix_chat_msg_conv", "conversation_id", "created_at"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    conversation_id = Column(Integer, nullable=False)
+    role = Column(String, nullable=False, default="user")  # user/assistant/system
+    content = Column(Text, nullable=False, default="")
+    created_at = Column(DateTime, server_default=func.now())

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { Copy, Download, ExternalLink, RefreshCw, Share2 } from 'lucide-react'
+import { Copy, Download, ExternalLink, RefreshCw, Share2, Sparkles } from 'lucide-react'
 import { insightApi, stocksApi } from '@panwatch/api'
 import { getMarketBadge } from '@panwatch/biz-ui'
 import { useLocalStorage } from '@/lib/utils'
@@ -779,6 +779,46 @@ export default function StockInsightModal(props: {
       },
     }
   }, [klineSummary, technicalScored])
+  const buildPageContext = useCallback(() => {
+    const parts: string[] = []
+    if (quote) {
+      const items = [`价格${quote.current_price}`, `涨跌幅${quote.change_pct}%`]
+      if (quote.volume != null) items.push(`成交量${quote.volume}`)
+      if (quote.turnover_rate != null) items.push(`换手率${quote.turnover_rate}%`)
+      if (quote.pe_ratio != null) items.push(`市盈率${quote.pe_ratio}`)
+      if (quote.total_market_value != null) items.push(`总市值${quote.total_market_value}`)
+      parts.push(`实时行情：${items.join('，')}`)
+    }
+    if (klineSummary) {
+      const k = klineSummary as any
+      const items = []
+      if (k.trend) items.push(`趋势${k.trend}`)
+      if (k.macd_status) items.push(`MACD${k.macd_status}`)
+      if (k.rsi_status) items.push(`RSI${k.rsi_status}${k.rsi6 != null ? `(${k.rsi6})` : ''}`)
+      if (k.kdj_status) items.push(`KDJ${k.kdj_status}`)
+      if (k.boll_status) items.push(`布林${k.boll_status}`)
+      if (k.volume_trend) items.push(`量能${k.volume_trend}${k.volume_ratio != null ? `(${k.volume_ratio}x)` : ''}`)
+      if (k.support != null) items.push(`支撑${k.support}`)
+      if (k.resistance != null) items.push(`压力${k.resistance}`)
+      if (items.length) parts.push(`技术面：${items.join('，')}`)
+    }
+    if (technicalScored) {
+      parts.push(`技术评分：${technicalScored.action_label}(score=${technicalScored.score})，信号：${technicalScored.signal || '中性'}`)
+      const evidence = (technicalScored.evidence || []).filter((e: any) => e.delta !== 0)
+      if (evidence.length) {
+        parts.push(`评分依据：${evidence.map((e: any) => `${e.text}(${e.delta > 0 ? '+' : ''}${e.delta})`).join('；')}`)
+      }
+    }
+    if (suggestions.length > 0) {
+      const lines = suggestions.slice(0, 3).map(s => `- [${s.agent_label || s.agent_name}] ${s.action_label}: ${s.signal}`)
+      parts.push(`最近AI建议：\n${lines.join('\n')}`)
+    }
+    if (holdingAgg) {
+      parts.push(`持仓：${holdingAgg.quantity}股，成本${holdingAgg.unitCost}，市值${holdingAgg.marketValue}，盈亏${holdingAgg.pnl}`)
+    }
+    return parts.join('\n')
+  }, [quote, klineSummary, technicalScored, suggestions, holdingAgg])
+
   const quoteUp = (quote?.change_pct || 0) > 0
   const quoteDown = (quote?.change_pct || 0) < 0
   const changeColor = quoteUp ? 'text-rose-500' : quoteDown ? 'text-emerald-500' : 'text-foreground'
@@ -1230,6 +1270,18 @@ export default function StockInsightModal(props: {
                 <Button variant="secondary" size="sm" className="h-8 px-2.5" onClick={handleSetAlert} disabled={alerting}>
                   {alerting ? '设置中...' : '一键设提醒'}
                 </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 px-2.5"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('panwatch-open-chat', {
+                      detail: { symbol, market, stockName: resolvedName, pageContext: buildPageContext() }
+                    }))
+                  }}
+                >
+                  <Sparkles className="w-3.5 h-3.5 mr-1" /> 问 AI
+                </Button>
                 <Button variant="outline" size="sm" className="h-8 px-2.5" onClick={() => handleRefreshAll()} disabled={loading}>
                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                 </Button>
@@ -1257,6 +1309,18 @@ export default function StockInsightModal(props: {
               <StockPriceAlertPanel mode="inline" symbol={symbol} market={market} stockName={resolvedName} />
               <Button variant="secondary" size="sm" className="h-8 px-2.5 shrink-0" onClick={handleSetAlert} disabled={alerting}>
                 {alerting ? '设置中...' : '一键设提醒'}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-8 px-2.5 shrink-0"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('panwatch-open-chat', {
+                    detail: { symbol, market, stockName: resolvedName, pageContext: buildPageContext() }
+                  }))
+                }}
+              >
+                <Sparkles className="w-3.5 h-3.5 mr-1" /> 问 AI
               </Button>
               <Button variant="outline" size="sm" className="h-8 px-2.5 shrink-0" onClick={() => handleRefreshAll()} disabled={loading}>
                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -1736,6 +1800,7 @@ export default function StockInsightModal(props: {
                 )}
               </div>
             )}
+
 
           </div>
         </DialogContent>

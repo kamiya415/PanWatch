@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { Sparkles } from 'lucide-react'
 import { fetchAPI } from '@panwatch/api'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@panwatch/base-ui/components/ui/dialog'
+import { Button } from '@panwatch/base-ui/components/ui/button'
 import { buildKlineSuggestion } from '@/lib/kline-scorer'
 import { HoverPopover } from '@panwatch/base-ui/components/ui/hover-popover'
 import { TechnicalBadge, technicalToneFromSuggestionAction } from '@panwatch/biz-ui/components/technical-badge'
@@ -149,6 +151,35 @@ export function KlineSummaryDialog({
 
   const effectiveSummary = initialSummary || summary
   const suggestion = effectiveSummary ? buildSuggestion(effectiveSummary, hasPosition) : null
+
+  const handleAskAI = useCallback(() => {
+    if (!effectiveSummary) return
+    const s = effectiveSummary
+    const parts: string[] = []
+    const items = []
+    if (s.trend) items.push(`趋势${s.trend}`)
+    if (s.macd_status) items.push(`MACD${s.macd_status}${s.macd_hist != null ? `(hist=${s.macd_hist.toFixed(3)})` : ''}`)
+    if (s.rsi_status) items.push(`RSI${s.rsi_status}${s.rsi6 != null ? `(${s.rsi6.toFixed(0)})` : ''}`)
+    if (s.kdj_status) items.push(`KDJ${s.kdj_status}${s.kdj_k != null ? `(K=${s.kdj_k.toFixed(1)},D=${s.kdj_d?.toFixed(1)},J=${s.kdj_j?.toFixed(1)})` : ''}`)
+    if (s.boll_status) items.push(`布林${s.boll_status}${s.boll_width != null ? `(带宽${s.boll_width.toFixed(1)}%)` : ''}`)
+    if (s.volume_trend) items.push(`量能${s.volume_trend}${s.volume_ratio != null ? `(${s.volume_ratio.toFixed(1)}x)` : ''}`)
+    if (items.length) parts.push(`技术指标：${items.join('，')}`)
+    if (s.support != null) parts.push(`支撑位：${s.support.toFixed(2)}`)
+    if (s.resistance != null) parts.push(`压力位：${s.resistance.toFixed(2)}`)
+    if (s.last_close != null) parts.push(`收盘价：${s.last_close.toFixed(2)}`)
+    if (s.change_5d != null) parts.push(`5日涨跌：${s.change_5d.toFixed(2)}%`)
+    if (s.change_20d != null) parts.push(`20日涨跌：${s.change_20d.toFixed(2)}%`)
+    if (s.ma5 != null) parts.push(`均线：MA5=${s.ma5.toFixed(2)} MA10=${s.ma10?.toFixed(2)} MA20=${s.ma20?.toFixed(2)} MA60=${s.ma60?.toFixed(2)}`)
+    if (suggestion) {
+      parts.push(`技术评分：${suggestion.action_label}(score=${suggestion.score})，信号：${suggestion.signal || '中性'}`)
+      if (suggestion.items.length) {
+        parts.push(`评分依据：${suggestion.items.map(e => `${e.text}(${e.delta > 0 ? '+' : ''}${e.delta})`).join('；')}`)
+      }
+    }
+    window.dispatchEvent(new CustomEvent('panwatch-open-chat', {
+      detail: { symbol, market, stockName: stockName || symbol, pageContext: parts.join('\n') }
+    }))
+  }, [effectiveSummary, suggestion, symbol, market, stockName])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -707,6 +738,10 @@ export function KlineSummaryDialog({
                 </div>
               </div>
             </details>
+
+            <Button variant="secondary" size="sm" className="w-full mt-1" onClick={handleAskAI}>
+              <Sparkles className="w-3.5 h-3.5 mr-1" /> 问 AI 分析这些指标
+            </Button>
 
           </div>
         )}

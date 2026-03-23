@@ -75,6 +75,56 @@ class AIClient:
             logger.error(f"AI 调用失败: {e}")
             raise
 
+    async def chat_multi(
+        self,
+        messages: list[dict],
+        temperature: float = 0.4,
+    ) -> str:
+        """
+        多轮对话：传入完整 messages 列表。
+
+        Args:
+            messages: [{"role": "system"/"user"/"assistant", "content": "..."}]
+            temperature: 生成温度
+        """
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+            )
+            if response.usage:
+                self.total_tokens_used += response.usage.total_tokens
+                logger.debug(
+                    f"Token usage: {response.usage.prompt_tokens} + "
+                    f"{response.usage.completion_tokens} = {response.usage.total_tokens}"
+                )
+            return response.choices[0].message.content or ""
+        except Exception as e:
+            logger.error(f"AI 多轮对话调用失败: {e}")
+            raise
+
+    async def chat_with_tools(
+        self,
+        messages: list[dict],
+        tools: list[dict],
+        temperature: float = 0.4,
+    ):
+        """带 tool use 的对话调用，返回原始 message 对象。"""
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                tools=tools,
+                temperature=temperature,
+            )
+            if response.usage:
+                self.total_tokens_used += response.usage.total_tokens
+            return response.choices[0].message
+        except Exception as e:
+            logger.error(f"AI tool use 调用失败: {e}")
+            raise
+
     def _encode_image(self, image_path: str) -> str | None:
         """将图片文件编码为 base64"""
         path = Path(image_path)

@@ -15,6 +15,7 @@ import PaperTradingPage from '@/pages/PaperTrading'
 import LoginPage from '@/pages/Login'
 import LogsModal from '@panwatch/biz-ui/components/logs-modal'
 import AmbientBackground from '@panwatch/biz-ui/components/AmbientBackground'
+import ChatWidget from '@/components/ChatWidget'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@panwatch/base-ui/components/ui/dialog'
 import { Button } from '@panwatch/base-ui/components/ui/button'
 
@@ -358,6 +359,7 @@ function App() {
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>
+      <ChatWidget />
       <LogsModal open={logsOpen} onOpenChange={setLogsOpen} />
       <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
         <DialogContent className="max-w-md">

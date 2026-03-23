@@ -1485,6 +1485,54 @@ def _m115_paper_trading_excluded_markets(conn: Connection) -> None:
     )
 
 
+def _m116_chat_tables(conn: Connection) -> None:
+    """AI 对话表。"""
+    conn.execute(
+        text("""
+        CREATE TABLE IF NOT EXISTS chat_conversations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT DEFAULT '',
+            stock_symbol TEXT,
+            stock_market TEXT,
+            ai_model_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+    )
+    conn.execute(
+        text("""
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id INTEGER NOT NULL,
+            role TEXT NOT NULL DEFAULT 'user',
+            content TEXT NOT NULL DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+    )
+    _create_index_if_missing(
+        conn, "ix_chat_conv_updated",
+        "CREATE INDEX ix_chat_conv_updated ON chat_conversations(updated_at)",
+    )
+    _create_index_if_missing(
+        conn, "ix_chat_conv_stock",
+        "CREATE INDEX ix_chat_conv_stock ON chat_conversations(stock_symbol, stock_market)",
+    )
+    _create_index_if_missing(
+        conn, "ix_chat_msg_conv",
+        "CREATE INDEX ix_chat_msg_conv ON chat_messages(conversation_id, created_at)",
+    )
+
+
+def _m117_chat_initial_context(conn: Connection) -> None:
+    """Add initial_context column to chat_conversations."""
+    try:
+        conn.execute(text("ALTER TABLE chat_conversations ADD COLUMN initial_context TEXT"))
+    except Exception:
+        pass  # column already exists
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     Migration(101, "agent_config_kind_and_visibility", _m101_agent_config_kind),
     Migration(102, "backfill_agent_kind_data", _m102_backfill_agent_kind),
@@ -1501,6 +1549,8 @@ MIGRATIONS: tuple[Migration, ...] = (
     Migration(113, "market_scan_snapshot_and_mixed_source", _m113_market_scan_snapshot_and_mixed_source),
     Migration(114, "paper_trading_tables", _m114_paper_trading_tables),
     Migration(115, "paper_trading_excluded_markets", _m115_paper_trading_excluded_markets),
+    Migration(116, "chat_tables", _m116_chat_tables),
+    Migration(117, "chat_initial_context", _m117_chat_initial_context),
 )
 
 
